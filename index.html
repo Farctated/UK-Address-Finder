@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CallerID — Delivery Address</title>
+<style>
+  /* ── Reset ────────────────────────────────────────────────── */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;
+    background:#0d0f14;color:#e8eaed;min-height:100vh;overflow:hidden;
+    display:flex;flex-direction:column;user-select:none
+  }
+
+  /* ── Top Bar ──────────────────────────────────────────────── */
+  .bar{
+    background:#161922;padding:8px 14px;display:flex;align-items:center;gap:8px;
+    border-bottom:1px solid #262a38;flex-shrink:0;min-height:42px
+  }
+  .bar .logo{font-size:16px;font-weight:700;letter-spacing:-.2px}
+  .bar .logo span{color:#60a5fa}
+  .bar .sub{margin-left:auto;font-size:10px;color:#6b7280}
+  .bar .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+  /* ── Screens ──────────────────────────────────────────────── */
+  .screen{display:none;flex:1;flex-direction:column;padding:8px;gap:6px;overflow-y:auto}
+  .screen.active{display:flex}
+
+  /* ── Cards ────────────────────────────────────────────────── */
+  .box{
+    background:#161922;border-radius:10px;padding:10px;
+    border:1.5px solid #262a38;transition:border-color .15s
+  }
+  .box-title{
+    font-size:10px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.5px;color:#6b7280;margin-bottom:6px;
+    display:flex;align-items:center;gap:6px
+  }
+  .box-title .snum{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:16px;height:16px;border-radius:50%;background:#262a38;
+    font-size:9px;color:#6b7280;flex-shrink:0
+  }
+  .box-title .pill{
+    margin-left:auto;font-size:9px;padding:1px 8px;border-radius:20px;
+    font-weight:600;background:#262a38;color:#6b7280
+  }
+  .box-title .pill.done{background:rgba(5,150,105,.15);color:#34d399}
+  .box-title .pill.go{background:rgba(59,130,246,.15);color:#60a5fa}
+
+  /* ── Input ────────────────────────────────────────────────── */
+  .big-input{
+    width:100%;padding:8px 12px;background:#0d0f14;
+    border:1.5px solid #262a38;border-radius:8px;
+    font-size:20px;font-weight:700;color:#e8eaed;text-align:center;
+    letter-spacing:1.5px;outline:none;transition:border-color .15s;
+    min-height:42px;-webkit-appearance:none;font-family:inherit
+  }
+  .big-input::placeholder{color:#4b5563;font-weight:400;font-size:14px;letter-spacing:0}
+  .big-input:focus{border-color:#3b82f6}
+
+  /* ── Buttons ──────────────────────────────────────────────── */
+  .big-btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    width:100%;padding:10px;border:none;border-radius:8px;
+    font-size:15px;font-weight:700;cursor:pointer;
+    min-height:44px;transition:all .1s;
+    -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+    font-family:inherit
+  }
+  .big-btn:active{transform:scale(.97);opacity:.85}
+  .big-btn:disabled{opacity:.4;transform:none}
+  .big-btn.blue{background:#2563eb;color:#fff}
+  .big-btn.green{background:#059669;color:#fff}
+  .big-btn.gray{background:#262a38;color:#9ca3af}
+  .big-btn.red{background:rgba(239,68,68,.15);color:#ef4444;border:1.5px solid rgba(239,68,68,.2)}
+
+  /* ── Street buttons ───────────────────────────────────────── */
+  .street-list{display:flex;flex-direction:column;gap:4px;max-height:45vh;overflow-y:auto}
+  .street-btn{
+    display:flex;align-items:center;gap:6px;
+    padding:8px 12px;background:#0d0f14;border:1.5px solid #262a38;
+    border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;
+    min-height:40px;transition:all .1s;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent
+  }
+  .street-btn:active{transform:scale(.98);border-color:#3b82f6;background:rgba(59,130,246,.08)}
+  .street-btn .name{flex:1}
+  .street-btn .tag{
+    font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap
+  }
+  .street-btn .tag.area{background:rgba(107,114,128,.12);color:#9ca3af;font-weight:400}
+  .street-btn .tag.mbr{background:rgba(251,191,36,.1);color:#fbbf24}
+  .street-btn .tag.saved{background:rgba(5,150,105,.12);color:#34d399}
+  .street-btn .tag.dist{font-size:10px;color:#4b5563;font-weight:400}
+  .street-btn.dim{opacity:.65;border-color:#1f2937}
+  .street-btn.dim:active{opacity:1}
+
+  /* ── Saved pills ──────────────────────────────────────────── */
+  .saved-row{display:flex;gap:4px;overflow-x:auto;padding:0 0 4px;-webkit-overflow-scrolling:touch}
+  .saved-row::-webkit-scrollbar{display:none}
+  .saved-chip{
+    display:flex;align-items:center;gap:4px;
+    padding:6px 10px;background:rgba(5,150,105,.08);
+    border:1px solid rgba(5,150,105,.2);border-radius:6px;
+    cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;
+    touch-action:manipulation;flex-shrink:0
+  }
+  .saved-chip:active{transform:scale(.96);background:rgba(5,150,105,.15)}
+  .saved-chip .x{font-size:10px;color:#6b7280;padding:2px}
+  .saved-chip .x:active{color:#ef4444}
+
+  /* ── Keypad (numeric + alpha) ────────────────────────────── */
+  .keypad{position:relative}
+  .keypad .mode{display:none}
+  .keypad .mode.active{display:grid}
+  .numpad{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:2px
+  }
+  .alphapad{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:2px
+  }
+  .keypad .nk{
+    padding:10px 6px;border:1.5px solid #262a38;border-radius:8px;
+    background:#0d0f14;color:#e8eaed;font-size:20px;font-weight:700;
+    cursor:pointer;text-align:center;min-height:44px;
+    touch-action:manipulation;transition:all .08s;font-family:inherit
+  }
+  .keypad .nk:active{background:#2563eb;border-color:#2563eb;transform:scale(.95)}
+  .keypad .nk.bksp{color:#ef4444;font-size:16px}
+  .keypad .nk.zero{grid-column:span 2}
+  .keypad .nk.space{grid-column:span 2;font-size:14px;letter-spacing:1px;color:#9ca3af}
+  .keypad .nk.toggle{
+    background:#262a38;color:#60a5fa;font-size:12px;font-weight:600;
+    border-color:#3b82f6;grid-column:1/-1;min-height:36px
+  }
+  .keypad .nk.toggle:active{background:#3b82f6;color:#fff}
+  .keypad .nk.dot{font-size:20px}
+
+  /* ── Verify status ────────────────────────────────────────── */
+  .vstatus{
+    text-align:center;font-size:14px;font-weight:700;
+    padding:4px;min-height:32px;display:flex;align-items:center;
+    justify-content:center;gap:6px
+  }
+  .vstatus .spin{
+    display:inline-block;width:14px;height:14px;
+    border:2.5px solid #262a38;border-top-color:#3b82f6;
+    border-radius:50%;animation:s .7s linear infinite
+  }
+  @keyframes s{to{transform:rotate(360deg)}}
+
+  /* ── Receipt ──────────────────────────────────────────────── */
+  .receipt{
+    background:#0d0f14;border:1.5px dashed #262a38;border-radius:8px;
+    padding:10px 14px;text-align:center;margin:2px 0
+  }
+  .receipt .r-hdr{font-size:10px;color:#6b7280;margin-bottom:4px;letter-spacing:.5px}
+  .receipt .r-line{font-size:10px;color:#262a38;margin:3px 0;letter-spacing:1px}
+  .receipt .r-name{font-size:18px;font-weight:700;color:#e8eaed;margin:2px 0}
+  .receipt .r-addr{font-size:16px;color:#d1d5db;margin:2px 0}
+  .receipt .r-area{font-size:14px;color:#9ca3af;margin:1px 0}
+  .receipt .r-pc{font-size:18px;font-weight:700;color:#60a5fa;margin:3px 0}
+  .receipt .r-meta{font-size:12px;color:#6b7280;margin:2px 0}
+
+  /* ── Small fields ─────────────────────────────────────────── */
+  .sm-input{
+    width:100%;padding:8px 10px;background:#0d0f14;
+    border:1.5px solid #262a38;border-radius:6px;
+    font-size:14px;font-weight:500;color:#e8eaed;
+    outline:none;transition:border-color .15s;
+    min-height:36px;-webkit-appearance:none;font-family:inherit
+  }
+  .sm-input::placeholder{color:#4b5563;font-weight:400;font-size:13px}
+  .sm-input:focus{border-color:#3b82f6}
+
+  /* ── Misc ─────────────────────────────────────────────────── */
+  .gap8{display:flex;gap:6px}
+  .mt4{margin-top:2px}
+  .err{color:#ef4444;font-size:12px;text-align:center;padding:4px}
+  .section-label{font-size:11px;color:#6b7280;margin-bottom:4px;display:block}
+
+  /* ── Scrollbar ────────────────────────────────────────────── */
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#262a38;border-radius:2px}
+
+  /* ── Print (receipt) ──────────────────────────────────────── */
+  @media print{
+    body{background:#fff!important;color:#000!important;padding:16px;display:block}
+    .bar,.screen:not(#s4){display:none!important}
+    #s4{display:block!important;padding:0!important}
+    .box{border:none!important;padding:0!important;background:transparent!important}
+    .box-title{display:none!important}
+    .sm-input,#s4 .big-btn,.receipt-actions{display:none!important}
+    .receipt{border:none!important;padding:0!important;background:transparent!important;text-align:left!important}
+    .receipt *{color:#000!important}
+    .receipt .r-hdr{color:#666!important}
+    .receipt .r-line{color:#999!important}
+    .receipt .r-meta{color:#666!important}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  TOP BAR                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="bar">
+  <span class="dot" id="statusDot"></span>
+  <div class="logo">Caller<span>ID</span></div>
+  <div class="sub">Delivery&nbsp;Address</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  SCREEN 1 — POSTCODE                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="s1">
+  <div class="box" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+    <div class="box-title"><span class="snum">1</span> Postcode</div>
+    <input type="text" class="big-input" id="pcIn" placeholder="CH41 2TL" autocomplete="off" inputmode="text" spellcheck="false" autocapitalize="characters" style="font-size:26px;letter-spacing:2px">
+    <div class="err" id="pcErr"></div>
+    <div style="margin-top:10px;display:flex;gap:6px">
+      <button class="big-btn blue" id="pcGo" style="flex:1">🔍 Lookup</button>
+      <button class="big-btn gray" id="pcClr" style="flex:0;padding:10px 14px;min-width:48px">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  SCREEN 2 — STREET                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="s2">
+  <div class="box-title" style="padding:0 2px;margin-bottom:2px">
+    <span class="snum">2</span> Street for <span id="pcShow" style="color:#60a5fa;font-weight:700;font-size:12px"></span>
+  </div>
+  <div id="savedRow" class="saved-row"></div>
+  <div class="box" style="flex:1;display:flex;flex-direction:column;padding:8px">
+    <div class="street-list" id="streetList"></div>
+  </div>
+  <button class="big-btn gray" id="back1" style="min-height:40px;font-size:13px">← Different postcode</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  SCREEN 3 — NUMBER                                             -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="s3">
+  <div class="box" style="flex:0">
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+      <span style="font-size:10px;color:#6b7280;font-weight:600">Street:</span>
+      <span style="font-size:14px;font-weight:600" id="streetName"></span>
+      <span style="font-size:11px;color:#3b82f6;cursor:pointer;margin-left:auto;padding:4px" id="chgStreet">Change</span>
+    </div>
+  </div>
+  <div class="box" style="flex:1;display:flex;flex-direction:column">
+    <div class="box-title"><span class="snum">3</span> House number</div>
+    <input type="text" class="big-input" id="numIn" placeholder="e.g. 61 or Flat 3A" inputmode="none" autocomplete="off" readonly style="font-size:28px;font-weight:700;min-height:42px;cursor:default">
+    <div class="vstatus" id="vStatus"></div>
+    <div class="keypad" id="keypad">
+      <!-- ═══ Numeric mode ═══ -->
+      <div class="numpad mode active" id="numMode">
+        <button class="nk" data-k="1">1</button>
+        <button class="nk" data-k="2">2</button>
+        <button class="nk" data-k="3">3</button>
+        <button class="nk" data-k="4">4</button>
+        <button class="nk" data-k="5">5</button>
+        <button class="nk" data-k="6">6</button>
+        <button class="nk" data-k="7">7</button>
+        <button class="nk" data-k="8">8</button>
+        <button class="nk" data-k="9">9</button>
+        <button class="nk" data-k="0">0</button>
+        <button class="nk bksp" data-k="⌫">⌫</button>
+        <button class="nk toggle" data-k="🔤">🔤 ABC</button>
+      </div>
+      <!-- ═══ Alpha mode ═══ -->
+      <div class="alphapad mode" id="alphaMode">
+        <button class="nk" data-k="Q">Q</button>
+        <button class="nk" data-k="W">W</button>
+        <button class="nk" data-k="E">E</button>
+        <button class="nk" data-k="R">R</button>
+        <button class="nk" data-k="T">T</button>
+        <button class="nk" data-k="Y">Y</button>
+        <button class="nk" data-k="U">U</button>
+        <button class="nk" data-k="I">I</button>
+        <button class="nk" data-k="O">O</button>
+        <button class="nk" data-k="P">P</button>
+        <button class="nk" data-k="A">A</button>
+        <button class="nk" data-k="S">S</button>
+        <button class="nk" data-k="D">D</button>
+        <button class="nk" data-k="F">F</button>
+        <button class="nk" data-k="G">G</button>
+        <button class="nk" data-k="H">H</button>
+        <button class="nk" data-k="J">J</button>
+        <button class="nk" data-k="K">K</button>
+        <button class="nk" data-k="L">L</button>
+        <button class="nk bksp" data-k="⌫">⌫</button>
+        <button class="nk" data-k="Z">Z</button>
+        <button class="nk" data-k="X">X</button>
+        <button class="nk" data-k="C">C</button>
+        <button class="nk" data-k="V">V</button>
+        <button class="nk" data-k="B">B</button>
+        <button class="nk" data-k="N">N</button>
+        <button class="nk" data-k="M">M</button>
+        <button class="nk" data-k="-">-</button>
+        <button class="nk space" data-k=" ">␣ space</button>
+        <button class="nk dot" data-k=".">.</button>
+        <button class="nk toggle" data-k="🔢">🔢 123</button>
+      </div>
+    </div>
+  </div>
+  <button class="big-btn green" id="goConfirm" disabled style="min-height:48px;font-size:16px">✅ Confirm Address</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  SCREEN 4 — CONFIRM & RECEIPT                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen" id="s4">
+  <div class="box" style="flex:0">
+    <div class="box-title"><span class="snum snum" style="background:#059669;color:#fff">✓</span> Receipt <span class="pill done">ready</span></div>
+
+    <div style="display:flex;gap:6px;margin-bottom:4px">
+      <div style="flex:2">
+        <label class="section-label">Customer name</label>
+        <input type="text" class="sm-input" id="nameIn" placeholder="e.g. John Smith">
+      </div>
+      <div style="flex:1">
+        <label class="section-label">Phone</label>
+        <input type="tel" class="sm-input" id="phoneIn" placeholder="07700..." inputmode="tel">
+      </div>
+    </div>
+    <label class="section-label">Delivery notes</label>
+    <input type="text" class="sm-input" id="notesIn" placeholder="Ring bell, leave at door" style="margin-bottom:6px">
+
+    <div class="receipt" id="receipt">
+      <div class="r-hdr">═══ DELIVERY ADDRESS ═══</div>
+      <div class="r-name" id="rName">—</div>
+      <div class="r-addr" id="rAddr1">—</div>
+      <div class="r-area" id="rArea">—</div>
+      <div class="r-pc" id="rPc">—</div>
+      <div class="r-line">——————————————</div>
+      <div class="r-meta" id="rPhone">📞 —</div>
+      <div class="r-meta" id="rNotes">📝 —</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="big-btn green" id="printBtn" style="flex:2;min-height:48px;font-size:17px">🖨️ Print</button>
+    <button class="big-btn gray" id="editBtn" style="flex:1;min-height:48px;font-size:14px">✏️ Edit</button>
+  </div>
+  <button class="big-btn blue" id="newBtn" style="min-height:40px;font-size:14px">➕ New Lookup</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  CallerID — Touch POS Delivery Address Lookup
+// ═══════════════════════════════════════════════════════════════════
+
+const API = window.location.origin.replace(/:\d+$/, ':5050');
+
+// ── State ──────────────────────────────────────────────────────
+let S = {
+  pc: '', street: '', num: '', name: '', phone: '', notes: '',
+  verified: false, source: '', roads: [], saves: []
+};
+
+// ── Helpers ────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]);
+const show = id => document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active')) || $(id).classList.add('active');
+const hide = id => $(id).classList.remove('active');
+
+function fmtPc(r) {
+  let s = r.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(s.length>=7) return s.slice(0,-3)+' '+s.slice(-3);
+  if(s.length===6) return s[3]>='0'&&s[3]<='9'?s.slice(0,4)+' '+s.slice(4):s.slice(0,3)+' '+s.slice(3);
+  if(s.length===5){if(/^\d[A-Z]{2}$/.test(s.slice(-3)))return s.slice(0,2)+' '+s.slice(2);return s.slice(0,4)+' '+s.slice(4)}
+  return s;
+}
+
+async function api(e){const r=await fetch(`${API}${e}`);if(!r.ok){const d=await r.json().catch(()=>({error:r.statusText}));throw Error(d.error||`HTTP ${r.status}`)}return r.json()}
+
+// ── Health ─────────────────────────────────────────────────────
+(async function init(){
+  for(let i=0;i<3;i++){
+    try{const d=await api('/api/health');if(d.ok){$('statusDot').style.background='#34d399';break}}catch(e){}
+    await new Promise(r=>setTimeout(r,1200))
+  }
+})();
+
+// ── Screen 1: Postcode ─────────────────────────────────────────
+$('pcGo').addEventListener('click',doLookup);
+$('pcIn').addEventListener('keydown',e=>{if(e.key==='Enter')doLookup()});
+$('pcClr').addEventListener('click',()=>{$('pcIn').value='';$('pcErr').textContent='';$('pcIn').focus()});
+$('pcIn').addEventListener('input',function(){
+  const v=this.value.replace(/[^A-Z0-9]/gi,'');
+  if(v.length>=7)this.value=fmtPc(v);
+  $('pcErr').textContent='';
+});
+
+async function doLookup(){
+  const pc=fmtPc($('pcIn').value);
+  $('pcIn').value=pc;
+  if(!pc){$('pcErr').textContent='Enter a postcode';return}
+  $('pcGo').disabled=true;$('pcGo').textContent='⏳';
+  $('pcErr').textContent='';
+  try{
+    const [d,sd]=await Promise.all([
+      api(`/api/lookup?postcode=${encodeURIComponent(pc)}`),
+      api(`/api/saved-lookup?postcode=${encodeURIComponent(pc)}`).catch(()=>({saved_addresses:[]}))
+    ]);
+    S.pc=pc;S.roads=d.roads||[];S.saves=sd.saved_addresses||[];
+    if(!S.roads.length&&!S.saves.length){$('pcErr').textContent='No streets found for this postcode.';$('pcGo').disabled=false;$('pcGo').textContent='🔍 Lookup';return}
+    renderStreets();show('s2');
+  }catch(e){$('pcErr').textContent=e.message}
+  $('pcGo').disabled=false;$('pcGo').textContent='🔍 Lookup';
+}
+
+// ── Screen 2: Streets ──────────────────────────────────────────
+function renderStreets(){
+  $('pcShow').textContent=S.pc;
+
+  // Saved pills
+  let sh='';
+  if(S.saves.length){
+    sh='<div style="font-size:11px;color:#6b7280;margin-bottom:4px">Previously saved:</div>';
+    for(const a of S.saves){
+      const hn=esc(a.house_num),hs=esc(a.street);
+      sh+=`<div class="saved-chip" onclick="pickSaved('${hn}','${hs}')">
+        <span><strong>${hn}</strong> ${hs}</span>
+        <span class="x" onclick="event.stopPropagation();delSaved('${hn}','${hs}',this)">✕</span>
+      </div>`;
+    }
+  }
+  $('savedRow').innerHTML=sh;
+
+  // Street list
+  let h='';
+  for(const r of S.roads){
+    const d=r.distance_m<100?Math.round(r.distance_m)+'m':(r.distance_m/1000).toFixed(1)+'km';
+    h+=`<div class="street-btn${r.in_mbr?'':' dim'}" onclick="pickStreet('${esc(r.street)}')">
+      <span class="name">${esc(r.street)}</span>
+      ${r.area?`<span class="tag area">${esc(r.area)}</span>`:''}
+      <span class="tag ${r.in_mbr?'mbr':'dist'}">${d}</span>
+    </div>`;
+  }
+  $('streetList').innerHTML=h||'<div style="text-align:center;padding:30px;color:#6b7280;font-size:16px">No streets found</div>';
+}
+
+function pickStreet(s){S.street=s;$('streetName').textContent=s;$('numIn').value='';$('vStatus').innerHTML='';$('goConfirm').disabled=true;show('s3')}
+
+function pickSaved(hn,hs){S.street=hs;S.num=hn;$('streetName').textContent=hs;$('numIn').value=hn;show('s3');doVerify()}
+
+async function delSaved(hn,hs,el){
+  if(!confirm(`Delete "${hn} ${hs}"?`))return;
+  try{
+    const r=await fetch(`${API}/api/delete-saved`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postcode:S.pc,house_num:hn,street:hs})});
+    const d=await r.json();
+    if(d.deleted){const p=el.closest('.saved-chip');if(p)p.remove();S.saves=S.saves.filter(a=>!(a.house_num===hn&&a.street===hs))}
+  }catch(e){alert(e.message)}
+}
+
+$('back1').addEventListener('click',()=>show('s1'));
+
+// ── Screen 3: Keypad (numeric + alpha) ────────────────────────
+$('keypad').addEventListener('click',e=>{
+  const b=e.target.closest('.nk');if(!b)return;
+  const k=b.dataset.k;
+  if(k==='⌫'){$('numIn').value=$('numIn').value.slice(0,-1)}
+  else if(k==='🔤'){$('numMode').classList.remove('active');$('alphaMode').classList.add('active')}
+  else if(k==='🔢'){$('alphaMode').classList.remove('active');$('numMode').classList.add('active')}
+  else{$('numIn').value+=k}
+  // Auto-verify on every keypress
+  doVerify();
+});
+
+// Also allow typing via keyboard (for USB keyboards attached to POS)
+$('numIn').addEventListener('keydown',function(e){
+  if(e.key==='Backspace'){this.value=this.value.slice(0,-1);doVerify()}
+  else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){this.value+=e.key;doVerify()}
+  e.preventDefault();
+});
+
+$('chgStreet').addEventListener('click',()=>show('s2'));
+
+async function doVerify(){
+  const num=$('numIn').value.trim();
+  if(!num){$('vStatus').innerHTML='';$('goConfirm').disabled=true;return}
+  S.num=num;
+
+  // 1. Check saved addresses (instant, no API)
+  const match=S.saves.find(a=>a.house_num.toLowerCase()===num.toLowerCase()&&a.street.toLowerCase()===S.street.toLowerCase());
+  if(match){
+    S.verified=true;S.source='saved';
+    $('vStatus').innerHTML='✅ <span style="color:#34d399;font-size:22px">Verified</span> <span style="color:#6b7280;font-size:14px">(previous order)</span>';
+    $('goConfirm').disabled=false;$('goConfirm').textContent='✅ Confirm Address';
+    return;
+  }
+
+  $('vStatus').innerHTML='<span class="spin"></span><span style="color:#6b7280">Checking...</span>';
+  $('goConfirm').disabled=true;
+
+  try{
+    // 2. Local DB
+    const d=await api(`/api/verify?postcode=${encodeURIComponent(S.pc)}&number=${encodeURIComponent(num)}`);
+    if(d.verified){
+      S.verified=true;S.source=d.source||'local';
+      $('vStatus').innerHTML='✅ <span style="color:#34d399;font-size:22px">Verified ✓</span>';
+      $('goConfirm').disabled=false;$('goConfirm').textContent='✅ Confirm Address';
+      fetch(`${API}/api/save-address`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postcode:S.pc,house_num:num,street:S.street})}).catch(()=>{});
+      return;
+    }
+
+    // 3. Nominatim
+    const nom=async q=>{const r=await fetch(`${API}/api/nominatim?q=${encodeURIComponent(q)}&limit=5`);if(r.status===429){await new Promise(r=>setTimeout(r,2000));const r2=await fetch(`${API}/api/nominatim?q=${encodeURIComponent(q)}&limit=5`);return r2.ok?r2.json():null}return r.ok?r.json():null};
+    let ok=0;
+    for(const q of [`${num}, ${S.street}, ${S.pc}`,`${num}, ${S.pc}`]){
+      const d=await nom(q);
+      if(d&&d.ok&&d.results){for(const r of d.results){const a=r.address||{},s=a.road||a.pedestrian||a.footway||'',p=(a.postcode||'').toUpperCase().replace(/\s+/g,''),pcC=S.pc.replace(/\s+/g,'').toUpperCase(),h=(a.house_number||'').toLowerCase(),q=num.toLowerCase(),dis=(r.display_name||'').toLowerCase();if(!s||!p||p.slice(0,-3)!==pcC.slice(0,-3))continue;if(h!==q&&!dis.includes(q))continue;if(s&&(s.toLowerCase().includes(S.street.toLowerCase())||S.street.toLowerCase().includes(s.toLowerCase()))){ok=1;S.verified=true;S.source='Nominatim';$('vStatus').innerHTML='✅ <span style="color:#34d399;font-size:22px">Verified</span> <span style="color:#6b7280;font-size:14px">(OpenStreetMap)</span>';$('goConfirm').disabled=false;$('goConfirm').textContent='✅ Confirm Address';fetch(`${API}/api/save-address`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postcode:S.pc,house_num:h||num,street:s})}).catch(()=>{});break}}}
+      if(ok)break
+    }
+    if(ok)return;
+
+    // 4. Here Maps
+    try{
+      const r=await fetch(`${API}/api/here?q=${encodeURIComponent(num+' '+S.street+' '+S.pc)}&limit=5`);
+      if(r.ok){const d=await r.json();if(d.ok&&d.results){for(const r of d.results){const a=r.address||{},s=a.street||'',p=(a.postalCode||'').toUpperCase().replace(/\s+/g,''),pcC=S.pc.replace(/\s+/g,'').toUpperCase(),h=(a.houseNumber||'').toLowerCase(),q=num.toLowerCase();if(!s||!p||p.slice(0,-3)!==pcC.slice(0,-3))continue;if(h!==q&&!s.toLowerCase().includes(q))continue;S.verified=true;S.source='Here Maps';$('vStatus').innerHTML='✅ <span style="color:#34d399;font-size:22px">Verified</span> <span style="color:#6b7280;font-size:14px">(Here Maps)</span>';$('goConfirm').disabled=false;$('goConfirm').textContent='✅ Confirm Address';fetch(`${API}/api/save-address`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postcode:S.pc,house_num:h||num,street:s})}).catch(()=>{});return}}}
+    }catch(e){}
+
+    // 5. Not found
+    S.verified=false;
+    $('vStatus').innerHTML='⚠️ <span style="color:#fbbf24;font-size:18px">Not found in databases</span>';
+    $('goConfirm').disabled=false;$('goConfirm').textContent='💾 Save Anyway';
+  }catch(e){$('vStatus').textContent='';$('goConfirm').disabled=true}
+}
+
+// ── Screen 4: Confirm ──────────────────────────────────────────
+$('goConfirm').addEventListener('click',function(){
+  if(!S.verified){
+    fetch(`${API}/api/save-address`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({postcode:S.pc,house_num:S.num,street:S.street})}).catch(()=>{});
+  }
+  renderReceipt();show('s4');
+});
+
+function renderReceipt(){
+  S.name=$('nameIn').value.trim();S.phone=$('phoneIn').value.trim();S.notes=$('notesIn').value.trim();
+  const area=S.roads.find(r=>r.in_mbr)?.area||S.pc.split(' ')[0];
+  $('rName').textContent=S.name||'—';$('rName').style.opacity=S.name?'1':'.4';
+  $('rAddr1').textContent=S.num+' '+S.street;
+  $('rArea').textContent=area;
+  $('rPc').textContent=S.pc;
+  $('rPhone').textContent=S.phone?'📞 '+S.phone:'📞 —';$('rPhone').style.opacity=S.phone?'1':'.4';
+  $('rNotes').textContent=S.notes?'📝 '+S.notes:'📝 —';$('rNotes').style.opacity=S.notes?'1':'.4';
+}
+['nameIn','phoneIn','notesIn'].forEach(id=>$(id).addEventListener('input',renderReceipt));
+
+$('printBtn').addEventListener('click',function(){window.print();setTimeout(()=>{if(confirm('Printed? Start new lookup?'))resetAll()},800)});
+$('editBtn').addEventListener('click',()=>show('s3'));
+$('newBtn').addEventListener('click',resetAll);
+
+function resetAll(){
+  S={pc:'',street:'',num:'',name:'',phone:'',notes:'',verified:false,source:'',roads:[],saves:[]};
+  $('pcIn').value='';$('numIn').value='';$('vStatus').innerHTML='';$('goConfirm').disabled=true;$('goConfirm').textContent='✅ Confirm Address';
+  $('nameIn').value='';$('phoneIn').value='';$('notesIn').value='';$('pcErr').textContent='';
+  // Reset keypad to numeric mode
+  $('alphaMode').classList.remove('active');$('numMode').classList.add('active');
+  show('s1');$('pcIn').focus();
+}
+</script>
+</body>
+</html>

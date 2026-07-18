@@ -4,3 +4,5 @@ __pycache__/
 .env
 *.db
 *.sql.gz
+*.csv
+Data/
